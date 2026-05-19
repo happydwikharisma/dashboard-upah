@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+  <title>Dashboard Analisis Upah Buruh Indonesia | BPS 2023-2025</title>
+  
+  <!-- Leaflet CSS untuk Peta -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <!-- Chart JS -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  
+  <!-- akan diisi CSS terpisah nanti -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ============================================ -->
+<!-- HEADER (Tetap di semua tab)                   -->
+<!-- ============================================ -->
+<header class="header">
+  <div class="header-left">
+    <button id="mobileMenuToggle" class="mobile-menu-toggle" aria-label="Menu">☰</button>
+    <div class="header-text">
+      <h1>📊 DASHBOARD ANALISIS UPAH BURUH INDONESIA</h1>
+      <p>Sumber: BPS, Periode 2023-2025 (Februari & Agustus) | Dashboard Interaktif 5 Tab</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="periode-box">
+      <span class="icon">📅</span>
+      <span>Data: Feb 2023 - Agu 2025</span>
+    </div>
+  </div>
+</header>
+
+<!-- ============================================ -->
+<!-- GLOBAL SEARCH (Tetap di semua tab)            -->
+<!-- ============================================ -->
+<div class="global-search-container">
+  <div class="global-search-box">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="globalSearchInput" 
+           placeholder="Global Search" 
+           class="global-search-input" 
+           autocomplete="off">
+    <button id="clearSearchBtn" class="clear-search-btn">✖</button>
+    <div id="autocompleteDropdown" class="autocomplete-dropdown"></div>
+  </div>
+  <div id="searchResultCount" class="search-result-count"></div>
+</div>
+
+<!-- ============================================ -->
+<!-- MAIN CONTAINER                               -->
+<!-- ============================================ -->
+<div class="container">
+  
+  <!-- ============================================ -->
+  <!-- SIDEBAR FILTER (Akan berubah sesuai tab)     -->
+  <!-- ============================================ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h2 id="sidebarTitle">🔍 FILTER DATA</h2>
+      <button id="closeSidebarBtn" class="close-sidebar-btn">✖</button>
+    </div>
+
+    <!-- Filter yang selalu ada di semua tab -->
+    <div class="filter-group" id="filterTahunGroup">
+      <label>📆 Tahun</label>
+      <select id="tahunSelect">
+        <option value="Semua">Semua</option>
+        <option value="2023">2023</option>
+        <option value="2024">2024</option>
+        <option value="2025">2025</option>
+      </select>
+    </div>
+
+    <div class="filter-group" id="filterPeriodeGroup">
+      <label>📅 Periode</label>
+      <select id="periodeSelect">
+        <option value="Semua">Semua</option>
+        <option value="Februari">Februari</option>
+        <option value="Agustus">Agustus</option>
+      </select>
+    </div>
+
+    <!-- Filter Gender (untuk tab Pendidikan, Umur, Usaha) -->
+<div class="filter-group" id="filterGenderGroup" style="display: none;">
+  <label>⚥ Jenis Kelamin</label>
+  <select id="genderSelect">
+    <option value="Semua">Semua</option>
+    <option value="Laki-Laki">Laki-Laki</option>
+    <option value="Perempuan">Perempuan</option>
+    <option value="Laki-Laki dan Perempuan">Gabungan (Laki-Laki + Perempuan)</option>
+  </select>
+</div>
+
+    <!-- Filter Provinsi (khusus tab Provinsi) -->
+    <div class="filter-group" id="filterProvinsiGroup" style="display: none;">
+      <label>🏙️ Provinsi</label>
+      <input type="text" id="provinsiSearch" placeholder="Cari provinsi...">
+      <div id="provinsiList" class="list-box"></div>
+    </div>
+
+    <!-- Filter Pendidikan (khusus tab Pendidikan) -->
+    <div class="filter-group" id="filterPendidikanGroup" style="display: none;">
+  <label>🎓 Pendidikan (bisa pilih lebih dari satu)</label>
+  <input type="text" id="pendidikanSearch" placeholder="Cari pendidikan...">
+  <div id="pendidikanList" class="list-box"></div>
+</div>
+
+    <!-- Filter Umur (khusus tab Umur) -->
+    <div class="filter-group" id="filterUmurGroup" style="display: none;">
+  <label>👥 Kelompok Umur (bisa pilih lebih dari satu)</label>
+  <input type="text" id="umurSearch" placeholder="Cari umur...">
+  <div id="umurList" class="list-box"></div>
+</div>
+
+    <!-- Filter Usaha (khusus tab Usaha) -->
+    <div class="filter-group" id="filterUsahaGroup" style="display: none;">
+      <label>🏭 Lapangan Usaha</label>
+      <input type="text" id="usahaSearch" placeholder="Cari usaha...">
+      <div id="usahaList" class="list-box"></div>
+    </div>
+
+    <button id="resetBtn" class="reset-btn">🔄 Reset Filter</button>
+  </aside>
+
+  <!-- ============================================ -->
+  <!-- MAIN DASHBOARD (Tempat Tab dan Konten)       -->
+  <!-- ============================================ -->
+  <main class="dashboard">
+    
+    <!-- NAVIGASI TAB -->
+    <div class="tab-navigation">
+      <button class="tab-btn active" data-tab="provinsi">
+        <span class="tab-icon">📍</span> PROVINSI
+      </button>
+      <button class="tab-btn" data-tab="pendidikan">
+        <span class="tab-icon">🎓</span> PENDIDIKAN
+      </button>
+      <button class="tab-btn" data-tab="umur">
+        <span class="tab-icon">👥</span> UMUR
+      </button>
+      <button class="tab-btn" data-tab="usaha">
+        <span class="tab-icon">🏭</span> USAHA
+      </button>
+      <button class="tab-btn" data-tab="semua">
+        <span class="tab-icon">🔍</span> SEMUA DATA
+      </button>
+    </div>
+
+        <!-- ============================================ -->
+    <!-- TAB 1: PROVINSI                              -->
+    <!-- ============================================ -->
+    <div id="tab-provinsi" class="tab-content active">
+      <div class="dashboard-header">
+        <h2>📍 Analisis Upah per Provinsi</h2>
+        <p>Peta sebaran, perbandingan upah provinsi tertinggi dan terendah, serta tren upah provinsi</p>
+      </div>
+
+      <!-- KPI CARDS (Provinsi) -->
+      <div class="kpi-scroll-wrapper">
+        <div class="kpi-container">
+          <div class="kpi-card kpi-nasional">
+            <div class="kpi-icon">🏦</div>
+            <h3>Rata-rata Upah Nasional</h3>
+            <p id="kpi-rata-provinsi">-</p>
+            <div class="kpi-trend" id="trend-provinsi"></div>
+          </div>
+          <div class="kpi-card kpi-tertinggi">
+            <div class="kpi-icon">🚀</div>
+            <h3>Upah Tertinggi</h3>
+            <p id="kpi-tertinggi-provinsi">-</p>
+            <p id="kpi-tertinggi-ket" class="kpi-keterangan"></p>
+          </div>
+          <div class="kpi-card kpi-terendah">
+            <div class="kpi-icon">📉</div>
+            <h3>Upah Terendah</h3>
+            <p id="kpi-terendah-provinsi">-</p>
+            <p id="kpi-terendah-ket" class="kpi-keterangan"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- CHART 1: MAPS -->
+      <div class="chart-card full-width">
+        <div class="chart-header">
+          <h3>🗺️ Peta Sebaran Upah per Provinsi</h3>
+          <span class="chart-subtitle" id="petaSubtitle">Klik marker untuk filter provinsi</span>
+        </div>
+        <div id="mapContainer" style="width: 100%; height: 450px; border-radius: 12px; overflow: hidden;"></div>
+        <div style="font-size: 0.65rem; text-align: center; margin-top: 8px; color: #5a6e7c;">
+          💡 Warna marker: 🔴 rendah → 🟢 tinggi | Klik marker untuk filter provinsi
+        </div>
+      </div>
+
+      <!-- CHART GABUNGAN: PERBANDINGAN UPAH TERTINGGI DAN TERENDAH -->
+<div class="chart-card full-width">
+  <h3>📊 Perbandingan Upah Provinsi Tertinggi dan Terendah</h3>
+  <div class="chart-container">
+    <canvas id="chartPerbandinganProvinsi"></canvas>
+  </div>
+
+  <div class="insight-box" id="insightPerbandinganProvinsi">
+    💡 Insight: Perbandingan upah tertinggi dan terendah berdasarkan provinsi yang dipilih.
+  </div>
+</div>
+
+<!-- LAYOUT 2 KOLOM UNTUK PROVINSI -->
+<div class="provinsi-layout">
+  <!-- KOLOM KIRI -->
+  <div class="provinsi-left-col">
+    <!-- CHART 4: PERKEMBANGAN UPAH NASIONAL -->
+    <div class="chart-card">
+      <h3>📈 Perkembangan Rata-rata Upah Nasional (Feb 2023 - Agu 2025)</h3>
+      <div class="chart-container">
+        <canvas id="chartTrenNasional"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- KOLOM KANAN -->
+  <div class="provinsi-right-col">
+    <!-- CHART 5: DONUT DISTRIBUSI UPAH PER WILAYAH -->
+    <div class="chart-card">
+      <h3>🍩 Distribusi Upah per Wilayah (Pulau)</h3>
+      <div class="chart-container" style="min-height: 300px;">
+        <canvas id="chartDonutProvinsi"></canvas>
+      </div>
+      <div class="insight-box" id="insightDonutProvinsi">
+        💡 Proporsi upah berdasarkan kelompok pulau di Indonesia
+      </div>
+    </div>
+  </div>
+</div>
+
+      <!-- TABEL PROVINSI (FULL WIDTH DI BAWAH SEMUA) -->
+      <div class="chart-card full-width">
+        <h3>📋 Tabel Lengkap Data Provinsi</h3>
+        <div class="table-wrapper">
+          <table class="data-table" id="tabelProvinsi">
+            <thead>
+              <tr><th>Tahun</th><th>Periode</th><th>Provinsi</th><th>Upah</th></tr>
+            </thead>
+            <tbody id="tabelProvinsiBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- TAB 2: PENDIDIKAN (dengan interpretasi gender) -->
+    <!-- ============================================ -->
+    <div id="tab-pendidikan" class="tab-content">
+      <div class="dashboard-header">
+        <h2>🎓 Analisis Upah berdasarkan Pendidikan</h2>
+        <p>Perbandingan upah laki-laki vs perempuan di setiap jenjang pendidikan</p>
+      </div>
+
+      <div class="kpi-scroll-wrapper">
+        <div class="kpi-container">
+          <div class="kpi-card kpi-nasional">
+            <h3>Rata-rata Upah</h3>
+            <p id="kpi-rata-pendidikan">-</p>
+          </div>
+          <div class="kpi-card kpi-laki">
+            <h3>👨 Laki-Laki Tertinggi</h3>
+            <p id="kpi-laki-pendidikan">-</p>
+          </div>
+          <div class="kpi-card kpi-perempuan">
+            <h3>👩 Perempuan Tertinggi</h3>
+            <p id="kpi-perempuan-pendidikan">-</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- CHART PERBANDINGAN GENDER -->
+      <div class="chart-card full-width">
+        <div class="chart-header">
+          <h3>🧑‍🤝‍🧑 Perbandingan Upah Laki-Laki vs Perempuan</h3>
+          <span class="chart-subtitle">Data nasional (seluruh provinsi)</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="chartPendidikanGender"></canvas>
+        </div>
+                <div class="insight-box" id="insightPendidikan">
+          💡 <strong>Insight:</strong> Pilih filter tahun, periode, dan gender untuk melihat perbandingan
+        </div>
+      </div>
+
+      <!-- ADDITIONAL CHARTS: DONUT + BAR (TAMBAHKAN INI) -->
+      <div class="chart-grid-2cols">
+        <div class="chart-card">
+          <h3>🍩 Distribusi Upah per Jenjang Pendidikan</h3>
+          <div class="chart-container">
+            <canvas id="chartDonutPendidikan"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h3>📊 Gap Upah Laki-Laki vs Perempuan</h3>
+          <div class="chart-container">
+            <canvas id="chartGapPendidikan"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- TABEL PENDIDIKAN -->
+      <div class="chart-card full-width">
+        <h3>📋 Tabel Data Pendidikan</h3>
+        <div class="table-wrapper">
+          <table class="data-table" id="tabelPendidikan">
+            <thead><tr><th>Tahun</th><th>Periode</th><th>Pendidikan</th><th>Jenis Kelamin</th><th>Upah</th></tr></thead>
+            <tbody id="tabelPendidikanBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- TAB 3: UMUR (dengan interpretasi gender)      -->
+    <!-- ============================================ -->
+    <div id="tab-umur" class="tab-content">
+      <div class="dashboard-header">
+        <h2>👥 Analisis Upah berdasarkan Kelompok Umur</h2>
+        <p>Perbandingan upah laki-laki vs perempuan di setiap rentang usia</p>
+      </div>
+
+      <div class="kpi-scroll-wrapper">
+        <div class="kpi-container">
+          <div class="kpi-card kpi-nasional">
+            <h3>Rata-rata Upah</h3>
+            <p id="kpi-rata-umur">-</p>
+          </div>
+          <div class="kpi-card kpi-laki">
+            <h3>👨 Laki-Laki Tertinggi</h3>
+            <p id="kpi-laki-umur">-</p>
+          </div>
+          <div class="kpi-card kpi-perempuan">
+            <h3>👩 Perempuan Tertinggi</h3>
+            <p id="kpi-perempuan-umur">-</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- CHART PERBANDINGAN GENDER -->
+      <div class="chart-card full-width">
+        <div class="chart-header">
+          <h3>🧑‍🤝‍🧑 Perbandingan Upah Laki-Laki vs Perempuan (per kelompok umur)</h3>
+          <span class="chart-subtitle">Data nasional (seluruh provinsi)</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="chartUmurGender"></canvas>
+        </div>
+                <div class="insight-box" id="insightUmur">
+          💡 <strong>Insight:</strong> Pilih filter tahun, periode, dan gender untuk melihat pola
+        </div>
+      </div>
+
+      <!-- ADDITIONAL CHARTS: DONUT + BAR (TAMBAHKAN INI) -->
+      <div class="chart-grid-2cols">
+        <div class="chart-card">
+          <h3>🍩 Distribusi Upah per Kategori Umur</h3>
+          <div class="chart-container">
+            <canvas id="chartDonutUmur"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h3>📊 Puncak Upah per Kelompok Umur</h3>
+          <div class="chart-container">
+            <canvas id="chartBarUmur"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- TABEL UMUR -->
+      <div class="chart-card full-width">
+        <h3>📋 Tabel Data Kelompok Umur</h3>
+        <div class="table-wrapper">
+          <table class="data-table" id="tabelUmur">
+            <thead><tr><th>Tahun</th><th>Periode</th><th>Kelompok Umur</th><th>Jenis Kelamin</th><th>Upah</th></tr></thead>
+            <tbody id="tabelUmurBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- TAB 4: USAHA (dengan interpretasi gender)     -->
+    <!-- ============================================ -->
+    <div id="tab-usaha" class="tab-content">
+      <div class="dashboard-header">
+        <h2>🏭 Analisis Upah berdasarkan Lapangan Usaha</h2>
+        <p>Perbandingan upah laki-laki vs perempuan di berbagai sektor</p>
+      </div>
+
+      <div class="kpi-scroll-wrapper">
+        <div class="kpi-container">
+          <div class="kpi-card kpi-nasional">
+            <h3>Rata-rata Upah</h3>
+            <p id="kpi-rata-usaha">-</p>
+          </div>
+          <div class="kpi-card kpi-laki">
+            <h3>👨 Laki-Laki Tertinggi</h3>
+            <p id="kpi-laki-usaha">-</p>
+          </div>
+          <div class="kpi-card kpi-perempuan">
+            <h3>👩 Perempuan Tertinggi</h3>
+            <p id="kpi-perempuan-usaha">-</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- CHART PERBANDINGAN GENDER -->
+      <div class="chart-card full-width">
+        <div class="chart-header">
+          <h3>🧑‍🤝‍🧑 Perbandingan Upah Laki-Laki vs Perempuan </h3>
+          <span class="chart-subtitle">Data nasional (seluruh provinsi)</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="chartUsahaGender"></canvas>
+        </div>
+                <div class="insight-box" id="insightUsaha">
+          💡 <strong>Insight:</strong> Pilih filter tahun, periode, dan gender untuk melihat perbandingan
+        </div>
+      </div>
+
+      <!-- ADDITIONAL CHARTS: DONUT + BAR (TAMBAHKAN INI) -->
+      <div class="chart-grid-2cols">
+        <div class="chart-card">
+          <h3>🍩 Distribusi Upah Berdasarkan Sektor Usaha </h3>
+          <div class="chart-container">
+            <canvas id="chartDonutUsaha"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h3>📊 Kesenjangan Gender per Sektor</h3>
+          <div class="chart-container">
+            <canvas id="chartGapUsaha"></canvas>
+          </div>
+        </div>
+      </div>
+      
+      <!-- TABEL USAHA -->
+      <div class="chart-card full-width">
+        <h3>📋 Tabel Data Lapangan Usaha</h3>
+        <div class="table-wrapper">
+          <table class="data-table" id="tabelUsaha">
+            <thead><tr><th>Tahun</th><th>Periode</th><th>Lapangan Usaha</th><th>Jenis Kelamin</th><th>Upah</th></tr></thead>
+            <tbody id="tabelUsahaBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- TAB 5: SEMUA DATA (Gabungan)                 -->
+    <!-- ============================================ -->
+    <div id="tab-semua" class="tab-content">
+      <div class="dashboard-header">
+        <h2>🔍 Seluruh Data Upah Buruh Indonesia</h2>
+        <p>Gabungan data provinsi, pendidikan, umur, dan lapangan usaha</p>
+      </div>
+
+      <!-- TABEL SEMUA DATA -->
+<div class="chart-card full-width">
+  <h3>📋 Tabel Gabungan Semua Data</h3>
+  <div class="table-wrapper">
+    <table class="data-table" id="tabelSemua">
+      <thead>
+        <tr>
+          <th>No</th>
+          <th>Tipe Data</th>
+          <th>Nama</th>
+          <th>Tahun</th>
+          <th>Periode</th>
+          <th>Jenis Kelamin</th>
+          <th>Upah</th>
+        </tr>
+      </thead>
+      <tbody id="tabelSemuaBody"></tbody>
+    </table>
+  </div>
+</div>
+        <div style="font-size: 0.7rem; margin-top: 10px; padding: 8px; background: #f1f5f9; border-radius: 8px;">
+          📌 Keterangan: Tabel ini menggabungkan 4 dataset berbeda. Data provinsi tidak memiliki detail gender, pendidikan, umur, atau usaha.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Script JS utama (akan diisi nanti) -->
+<script src="script.js"></script>
+
+</body>
+</html>
